@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
+@keyframes scan {
+  0% {
+    top: 0;
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes typing {
+  from {
+    width: 0;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 1s ease-out;
+}
+
+.animate-blink {
+  animation: blink 1s infinite;
+}
+
+.animate-scan {
+  animation: scan 3s linear infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 4s linear infinite;
+}
+
+.animate-typing {
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typing 3s steps(40, end);
+}
+
+/* Neon glow effects */
+.neon-glow {
+  box-shadow: 0 0 5px #39FF14, 0 0 10px #39FF14, 0 0 15px #39FF14;
+}
+
+.neon-glow-intense {
+  box-shadow: 0 0 10px #39FF14, 0 0 20px #39FF14, 0 0 30px #39FF14, 0 0 40px #39FF14;
+}
+
+.neon-text {
+  text-shadow: 0 0 5px #39FF14, 0 0 10px #39FF14, 0 0 15px #39FF14;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #121212;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #39FF14;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2ecc40;
+}
+
+/* Base styles */
+body {
+  font-family: 'JetBrains Mono', monospace;
+  background-color: #000000;
+  color: #CCCCCC;
+}
+
+.cyber-font {
+  font-family: 'Orbitron', 'JetBrains Mono', monospace;
+}
+
+/* Button hover effects */
+.neon-button {
+  transition: all 0.3s ease;
+  border: 2px solid #39FF14;
+  background: transparent;
+  color: #39FF14;
+}
+
+.neon-button:hover {
+  background: #39FF14;
+  color: #000000;
+  box-shadow: 0 0 20px #39FF14;
+  transform: translateY(-2px);
+}
+
+.neon-button:active {
+  transform: translateY(0);
+}
+
+/* Toast animations */
+@keyframes shrink {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Enhanced mobile responsiveness */
+@media (max-width: 768px) {
+  .cyber-font {
+    font-size: 1.5rem;
+  }
+  
+  .neon-text {
+    text-shadow: 0 0 3px #39FF14, 0 0 6px #39FF14, 0 0 9px #39FF14;
+  }
+  
+  .neon-glow {
+    box-shadow: 0 0 3px #39FF14, 0 0 6px #39FF14, 0 0 9px #39FF14;
+  }
+}
+
+/* Smooth transitions for all interactive elements */
+button, .cursor-pointer {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced hover states */
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+/* Custom focus styles */
+button:focus-visible {
+  outline: 2px solid #39FF14;
+  outline-offset: 2px;
+}
+
+/* Network status indicator */
+.network-dot {
+  width: 8px;
+  height: 8px;
+  background: #39FF14;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(57, 255, 20, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(57, 255, 20, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(57, 255, 20, 0);
+  }
+}
