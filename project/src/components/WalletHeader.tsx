@@ -1,17 +1,35 @@
 import React, { useState } from 'react';
+import {ethers} from "ethers";
 import { Wallet, Wifi } from 'lucide-react';
+
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
 
 const WalletHeader: React.FC = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState('');
 
-  const connectWallet = async () => {
-    // Simulate wallet connection
-    setTimeout(() => {
+const connectWallet = async () => {
+  if (window.ethereum) {
+    try {
+      const accounts = await window.ethereum.request({
+        method: 'eth_requestAccounts',
+      });
+
+      const address = accounts[0];
       setIsConnected(true);
-      setWalletAddress('0x742d...4A2f');
-    }, 1000);
-  };
+      setWalletAddress(address);
+    } catch (error) {
+      console.error('Connection failed:', error);
+    }
+  } else {
+    alert('MetaMask not detected. Please install it to continue.');
+  }
+};
+
 
   const disconnectWallet = () => {
     setIsConnected(false);
@@ -41,7 +59,7 @@ const WalletHeader: React.FC = () => {
           <div className="px-4 py-2 bg-neon-green/10 border border-neon-green/50 rounded-lg">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-neon-green rounded-full"></div>
-              <span className="text-neon-green font-mono text-sm">{walletAddress}</span>
+              <span className="text-neon-green font-mono text-sm">{walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}</span>
             </div>
           </div>
           <button
