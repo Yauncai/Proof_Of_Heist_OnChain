@@ -1,11 +1,45 @@
 import React from 'react';
+import {ethers, randomBytes} from "ethers";
+import ProofOfHeistABI from '../contracts/ProofOfHeist.json';
 import { Play, Zap, Trophy, Target } from 'lucide-react';
 
-interface QuizEntryProps {
-  onStartQuiz: () => void;
-}
+const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 
-const QuizEntry: React.FC<QuizEntryProps> = ({ onStartQuiz }) => {
+// interface QuizEntryProps {
+//   onStartQuiz: () => void;
+// }
+
+const QuizEntry: React.FC = () => {
+
+   const onStartQuiz = async () => {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, ProofOfHeistABI.abi, signer);
+
+      const dummyAnswers = Array(16).fill(1);
+      const nonce = BigInt("0x" + Array.from(randomBytes(8)).map(b => b.toString(16).padStart(2, '0')).join(''));     
+       const commitment = ethers.keccak256(
+        ethers.AbiCoder.defaultAbiCoder().encode(["uint8[]", "uint256"], [dummyAnswers, nonce])
+      );
+
+      const tx = await contract.startQuiz(commitment, {
+        value: ethers.parseEther("0.01")
+      });
+
+      await tx.wait();
+
+      console.log("Quiz started!");
+
+      localStorage.setItem("quizAnswers", JSON.stringify(dummyAnswers));
+      localStorage.setItem("quizNonce", nonce.toString());
+
+    } catch (err) {
+      console.error("Failed to start quiz:", err);
+    }
+  };
+
+
   return (
     <div className="min-h-screen bg-black text-gray-300 flex items-center justify-center p-6">
       <div className="max-w-2xl w-full">
@@ -48,8 +82,8 @@ const QuizEntry: React.FC<QuizEntryProps> = ({ onStartQuiz }) => {
                 <p className="text-sm text-gray-400">Required to participate in the quiz</p>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-neon-green">0.05 ETH</div>
-                <div className="text-sm text-gray-400">≈ $127.50</div>
+                <div className="text-2xl font-bold text-neon-green">0.01 ETH</div>
+                <div className="text-sm text-gray-400">≈ $38,34</div>
               </div>
             </div>
           </div>
