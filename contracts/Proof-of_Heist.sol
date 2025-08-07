@@ -179,7 +179,7 @@ contract ProofOfHeist is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, Pau
         
         // Generate random NFT metadata
         uint256 randomIndex = _generateRandomMetadataIndex(msg.sender, attempt.timestamp);
-        string memory tokenURI = string(abi.encodePacked(baseMetadataURI, "/", _toString(randomIndex), ".json"));
+        string memory nftTokenURI = string(abi.encodePacked(baseMetadataURI, "/", _toString(randomIndex), ".json"));
         
         uint256 tokenId = _tokenIdCounter;
         _tokenIdCounter++;
@@ -188,9 +188,9 @@ contract ProofOfHeist is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, Pau
         attempt.isActive = false;
         
         _safeMint(msg.sender, tokenId);
-        _setTokenURI(tokenId, tokenURI);
+        _setTokenURI(tokenId, nftTokenURI);
         
-        emit NFTMinted(msg.sender, tokenId, tokenURI);
+        emit NFTMinted(msg.sender, tokenId, nftTokenURI);
     }
     
     // ===== VIEW FUNCTIONS =====
@@ -208,14 +208,25 @@ contract ProofOfHeist is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, Pau
         uint256 successfulAttempts_
     ) {
         PlayerAttempt memory attempt = playerAttempts[_player];
+        
+        uint256 cooldown;
         uint256 timeSinceLastAttempt = block.timestamp - lastAttemptTime[_player];
+        if (timeSinceLastAttempt >= COOLDOWN_PERIOD) {
+            cooldown = 0;
+        } else {
+            cooldown = COOLDOWN_PERIOD - timeSinceLastAttempt;
+        }
+        
+        bool canMint = attempt.hasRevealed && 
+                      attempt.score >= PASSING_SCORE && 
+                      !attempt.hasClaimedNFT;
         
         return (
             attempt.isActive,
             attempt.hasRevealed,
             attempt.score,
-            attempt.hasRevealed && attempt.score >= PASSING_SCORE && !attempt.hasClaimedNFT,
-            timeSinceLastAttempt >= COOLDOWN_PERIOD ? 0 : COOLDOWN_PERIOD - timeSinceLastAttempt,
+            canMint,
+            cooldown,
             totalAttempts[_player],
             successfulAttempts[_player]
         );
@@ -305,7 +316,7 @@ contract ProofOfHeist is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, Pau
         uint256 randomHash = uint256(keccak256(abi.encodePacked(
             _player,
             _timestamp,
-            block.difficulty,
+            block.prevrandao, // Updated from block.difficulty
             block.timestamp,
             _tokenIdCounter
         )));
