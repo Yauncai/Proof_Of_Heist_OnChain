@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from  '../../firebase';
 import { Clock, Target, Heart, CheckCircle, XCircle } from 'lucide-react';
 
 interface Question {
-  id: number;
+  id: string;
   question: string;
   options: string[];
-  correctAnswer: number;
-  type: 'multiple' | 'boolean';
+  answer: string;
+  originalCorrectIndex?: number; // Track original correct answer position
 }
 
 interface QuizGameProps {
@@ -20,53 +22,55 @@ const QuizGame: React.FC<QuizGameProps> = ({ onComplete }) => {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [questions, setQuestions] = useState<Question[]>([]);
 
-  const questions: Question[] = [
-    {
-      id: 1,
-      question: "Which NFT marketplace was exploited in February 2022, allowing users to purchase high-value NFTs at outdated prices?",
-      options: ["OpenSea", "LooksRare", "Foundation", "SuperRare"],
-      correctAnswer: 0,
-      type: 'multiple'
-    },
-    {
-      id: 2,
-      question: "The Bored Ape Yacht Club Instagram hack in 2022 resulted in the theft of NFTs worth approximately how much?",
-      options: ["$1 million", "$3 million", "$500,000", "$2 million"],
-      correctAnswer: 1,
-      type: 'multiple'
-    },
-    {
-      id: 3,
-      question: "Phishing attacks are the most common method used to steal NFTs from users.",
-      options: ["True", "False"],
-      correctAnswer: 0,
-      type: 'boolean'
-    },
-    {
-      id: 4,
-      question: "Which blockchain has reported the highest number of NFT thefts?",
-      options: ["Ethereum", "Solana", "Polygon", "Binance Smart Chain"],
-      correctAnswer: 0,
-      type: 'multiple'
-    },
-    {
-      id: 5,
-      question: "The 'Premint' platform hack in 2022 was caused by a smart contract vulnerability.",
-      options: ["True", "False"],
-      correctAnswer: 1,
-      type: 'boolean'
+  // Shuffle array function
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-  ];
+    return shuffled;
+  };
 
-  useEffect(() => {
-    if (timeLeft > 0 && !showResult) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !showResult) {
-      handleTimeUp();
-    }
-  }, [timeLeft, showResult]);
+  // Shuffle options and track correct answer position
+  const shuffleQuestionOptions = (question: Question): Question => {
+    const originalCorrectIndex = question.options.findIndex(option => option === question.answer);
+    
+    // Create array with indices to track positions
+    const optionsWithIndices = question.options.map((option, index) => ({
+      option,
+      originalIndex: index
+    }));
+    
+    // Shuffle the options
+    const shuffledOptions = shuffleArray(optionsWithIndices);
+    
+    // Find new position of correct answer
+    const newCorrectIndex = shuffledOptions.findIndex(item => item.originalIndex === originalCorrectIndex);
+    
+    return {
+      ...question,
+      options: shuffledOptions.map(item => item.option),
+      originalCorrectIndex: newCorrectIndex
+    };
+  };
+
+  // Select 16 random questions from the fetched questions
+  const selectRandomQuestions = (allQuestions: Question[], count: number = 16): Question[] => {
+    const shuffled = shuffleArray(allQuestions);
+    return shuffled.slice(0, count).map(shuffleQuestionOptions);
+  };
+
+  // Define functions BEFORE useEffect
+  const nextQuestion = () => {
+    setCurrentQuestion(prev => prev + 1);
+    setSelectedAnswer(null);
+    setShowResult(false);
+    setTimeLeft(30);
+  };
 
   const handleTimeUp = () => {
     setWrongAnswers(prev => prev + 1);
@@ -88,7 +92,11 @@ const QuizGame: React.FC<QuizGameProps> = ({ onComplete }) => {
     setSelectedAnswer(answerIndex);
     setShowResult(true);
     
-    const correct = answerIndex === questions[currentQuestion].correctAnswer;
+    // Use the tracked correct index from shuffled options
+    const correctAnswerIndex = questions[currentQuestion].originalCorrectIndex ?? 
+      questions[currentQuestion].options.findIndex(option => option === questions[currentQuestion].answer);
+    
+    const correct = answerIndex === correctAnswerIndex;
     setIsCorrect(correct);
     
     if (!correct) {
@@ -106,20 +114,16 @@ const QuizGame: React.FC<QuizGameProps> = ({ onComplete }) => {
     }, 2000);
   };
 
-  const nextQuestion = () => {
-    setCurrentQuestion(prev => prev + 1);
-    setSelectedAnswer(null);
-    setShowResult(false);
-    setTimeLeft(30);
-  };
-
   const getAnswerButtonClass = (index: number) => {
     let baseClass = "w-full p-4 text-left rounded-lg border-2 transition-all duration-300 font-medium ";
     
     if (showResult) {
-      if (index === questions[currentQuestion].correctAnswer) {
+      const correctAnswerIndex = questions[currentQuestion].originalCorrectIndex ?? 
+        questions[currentQuestion].options.findIndex(option => option === questions[currentQuestion].answer);
+      
+      if (index === correctAnswerIndex) {
         baseClass += "border-neon-green bg-neon-green/20 text-neon-green neon-glow-sm";
-      } else if (index === selectedAnswer && index !== questions[currentQuestion].correctAnswer) {
+      } else if (index === selectedAnswer && index !== correctAnswerIndex) {
         baseClass += "border-red-500 bg-red-500/20 text-red-400";
       } else {
         baseClass += "border-gray-600 bg-gray-800/50 text-gray-500";
@@ -130,6 +134,73 @@ const QuizGame: React.FC<QuizGameProps> = ({ onComplete }) => {
 
     return baseClass;
   };
+
+  // Fetch from Firestore on mount
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'quizQuestions'));
+        const allQuestions: Question[] = [];
+
+        querySnapshot.forEach(doc => {
+          allQuestions.push({ id: doc.id, ...doc.data() } as Question);
+        });
+        
+        console.log('Fetched all questions:', allQuestions.length);
+        
+        // Select 16 random questions and shuffle their options
+        const selectedQuestions = selectRandomQuestions(allQuestions, 16);
+        console.log('Selected random questions:', selectedQuestions);
+        
+        setQuestions(selectedQuestions);
+      } catch (error) {
+        console.error("Error fetching questions:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQuestions();
+  }, []);
+
+  // Timer effect
+  useEffect(() => {
+    if (timeLeft > 0 && !showResult && questions.length > 0) {
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (timeLeft === 0 && !showResult && questions.length > 0) {
+      handleTimeUp();
+    }
+  }, [timeLeft, showResult, questions.length]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-neon-green font-mono">
+        <div className="mb-4 text-xl animate-pulse">
+          Decrypting vault data...
+        </div>
+        <div className="text-sm mb-6 text-gray-400">
+          Selecting 16 random questions from vault...
+        </div>
+        <div className="flex space-x-1">
+          <div className="w-2 h-2 bg-neon-green animate-bounce" style={{ animationDelay: "0s" }}></div>
+          <div className="w-2 h-2 bg-neon-green animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+          <div className="w-2 h-2 bg-neon-green animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center text-neon-green font-mono">
+        <div className="text-center">
+          <div className="text-xl mb-4">No questions found. Vault is empty.</div>
+          <div className="text-sm text-gray-400">Check Firebase collection: 'quizQuestions'</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-gray-300 p-6">
@@ -187,10 +258,7 @@ const QuizGame: React.FC<QuizGameProps> = ({ onComplete }) => {
               >
                 <div className="flex items-center gap-3">
                   <span className="font-mono text-neon-green font-bold">
-                    {questions[currentQuestion].type === 'boolean' 
-                      ? (index === 0 ? 'T' : 'F')
-                      : String.fromCharCode(65 + index)
-                    }.
+                    {String.fromCharCode(65 + index)}.
                   </span>
                   <span>{option}</span>
                 </div>

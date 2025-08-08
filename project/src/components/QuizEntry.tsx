@@ -5,13 +5,13 @@ import { Play, Zap, Trophy, Target } from 'lucide-react';
 
 const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 
-// interface QuizEntryProps {
-//   onStartQuiz: () => void;
-// }
+interface QuizEntryProps {
+  onStartQuiz: () => void;
+}
 
-const QuizEntry: React.FC = () => {
+const QuizEntry: React.FC<QuizEntryProps> = ({ onStartQuiz }) => {
 
-   const onStartQuiz = async () => {
+   const startQuizHandler = async () => {
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
@@ -33,7 +33,7 @@ const QuizEntry: React.FC = () => {
 
       localStorage.setItem("quizAnswers", JSON.stringify(dummyAnswers));
       localStorage.setItem("quizNonce", nonce.toString());
-
+      onStartQuiz();
     } catch (err) {
       console.error("Failed to start quiz:", err);
     }
@@ -102,7 +102,7 @@ const QuizEntry: React.FC = () => {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-neon-green mt-1">•</span>
-                Complete successfully to mint your "Proof of Heist\" NFT
+                Complete successfully 14/16 questions to mint your "Proof of Heist" NFT
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-neon-green mt-1">•</span>
@@ -113,7 +113,7 @@ const QuizEntry: React.FC = () => {
 
           {/* Start Button */}
           <button
-            onClick={onStartQuiz}
+            onClick={startQuizHandler}
             className="w-full neon-button py-4 rounded-xl font-bold text-lg cyber-font flex items-center justify-center gap-3 neon-glow hover:neon-glow-intense transition-all duration-300 transform hover:scale-105"
           >
             <Play className="w-6 h-6" />
