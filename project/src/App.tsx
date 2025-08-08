@@ -9,6 +9,7 @@ import NFTGallery from './components/NFTGallery';
 import { ToastContainer } from './components/ToastNotification';
 import { useToast } from './hooks/useToast';
 
+
 type GameState = 'splash' | 'entry' | 'quiz' | 'result' | 'reveal' | 'gallery';
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
   const [quizSuccess, setQuizSuccess] = useState(false);
   const [ownedNFTs, setOwnedNFTs] = useState<any[]>([]);
   const { toasts, removeToast, showSuccess, showError, showPending, updateToast } = useToast();
+
 
   const handleSplashComplete = () => {
     setGameState('entry');
@@ -75,8 +77,10 @@ function App() {
   const handleBackFromGallery = () => {
     setGameState('entry');
   };
+    console.log("Rendering App, current state:", gameState);
 
   if (gameState === 'splash') {
+     console.log("Rendering SplashScreen")
     return <SplashScreen onComplete={handleSplashComplete} />;
   }
 
@@ -84,7 +88,7 @@ function App() {
     <div className="min-h-screen bg-black">
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-
+      
       {/* Wallet Header - shown on all screens except splash and reveal */}
       {gameState !== 'reveal' && (
         <header className="relative z-10 p-6 border-b border-neon-green/20">
@@ -130,6 +134,7 @@ function App() {
         />
       )}
     </div>
+  
   );
 }
 

@@ -1,4 +1,4 @@
-  {"abi": [
+{  "abi": [
     {
       "inputs": [
         {
@@ -17,7 +17,7 @@
     },
     {
       "inputs": [],
-      "name": "AlreadyRevealed",
+      "name": "AlreadyMintedNFT",
       "type": "error"
     },
     {
@@ -155,22 +155,12 @@
     },
     {
       "inputs": [],
-      "name": "InvalidReveal",
-      "type": "error"
-    },
-    {
-      "inputs": [],
       "name": "InvalidScore",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "NFTAlreadyClaimed",
-      "type": "error"
-    },
-    {
-      "inputs": [],
-      "name": "NoActiveAttempt",
+      "name": "MaxAttemptsReached",
       "type": "error"
     },
     {
@@ -197,12 +187,12 @@
     },
     {
       "inputs": [],
-      "name": "QuizNotPassed",
+      "name": "ReentrancyGuardReentrantCall",
       "type": "error"
     },
     {
       "inputs": [],
-      "name": "ReentrancyGuardReentrantCall",
+      "name": "ScoreTooLow",
       "type": "error"
     },
     {
@@ -326,6 +316,12 @@
           "internalType": "string",
           "name": "tokenURI",
           "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "score",
+          "type": "uint8"
         }
       ],
       "name": "NFTMinted",
@@ -383,34 +379,15 @@
           "internalType": "bool",
           "name": "passed",
           "type": "bool"
-        }
-      ],
-      "name": "QuizCompleted",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "player",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "bytes32",
-          "name": "commitment",
-          "type": "bytes32"
         },
         {
           "indexed": false,
           "internalType": "uint256",
-          "name": "timestamp",
+          "name": "attemptNumber",
           "type": "uint256"
         }
       ],
-      "name": "QuizStarted",
+      "name": "QuizAttempted",
       "type": "event"
     },
     {
@@ -486,6 +463,19 @@
     {
       "inputs": [],
       "name": "ENTRY_FEE",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "MAX_ATTEMPTS",
       "outputs": [
         {
           "internalType": "uint256",
@@ -599,19 +589,11 @@
           "internalType": "bool",
           "name": "",
           "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "contractBalance",
-      "outputs": [
+        },
         {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
         }
       ],
       "stateMutability": "view",
@@ -659,12 +641,17 @@
         },
         {
           "internalType": "uint256",
-          "name": "totalNFTsMinted",
+          "name": "totalNFTsMinted_",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
           "name": "currentBalance",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "passRate",
           "type": "uint256"
         }
       ],
@@ -682,23 +669,23 @@
       "name": "getPlayerStatus",
       "outputs": [
         {
-          "internalType": "bool",
-          "name": "hasActiveAttempt",
-          "type": "bool"
+          "internalType": "uint256",
+          "name": "totalAttempts",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "successfulAttempts",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "bestScore",
+          "type": "uint256"
         },
         {
           "internalType": "bool",
-          "name": "hasRevealed",
-          "type": "bool"
-        },
-        {
-          "internalType": "uint8",
-          "name": "score",
-          "type": "uint8"
-        },
-        {
-          "internalType": "bool",
-          "name": "canMintNFT",
+          "name": "hasMintedNFT",
           "type": "bool"
         },
         {
@@ -708,13 +695,13 @@
         },
         {
           "internalType": "uint256",
-          "name": "totalAttempts_",
+          "name": "attemptsRemaining",
           "type": "uint256"
         },
         {
-          "internalType": "uint256",
-          "name": "successfulAttempts_",
-          "type": "uint256"
+          "internalType": "bool",
+          "name": "canAttempt",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -742,32 +729,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "lastAttemptTime",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "mintNFT",
-      "outputs": [],
-      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -843,36 +804,31 @@
           "type": "address"
         }
       ],
-      "name": "playerAttempts",
+      "name": "players",
       "outputs": [
         {
-          "internalType": "bytes32",
-          "name": "answerCommitment",
-          "type": "bytes32"
+          "internalType": "uint256",
+          "name": "totalAttempts",
+          "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "timestamp",
+          "name": "successfulAttempts",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "lastAttemptTime",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "bestScore",
           "type": "uint256"
         },
         {
           "internalType": "bool",
-          "name": "hasRevealed",
-          "type": "bool"
-        },
-        {
-          "internalType": "uint8",
-          "name": "score",
-          "type": "uint8"
-        },
-        {
-          "internalType": "bool",
-          "name": "hasClaimedNFT",
-          "type": "bool"
-        },
-        {
-          "internalType": "bool",
-          "name": "isActive",
+          "name": "hasMintedNFT",
           "type": "bool"
         }
       ],
@@ -889,22 +845,12 @@
     {
       "inputs": [
         {
-          "internalType": "uint8[]",
-          "name": "_answers",
-          "type": "uint8[]"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_nonce",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint8[]",
-          "name": "_correctAnswers",
-          "type": "uint8[]"
+          "internalType": "address",
+          "name": "_player",
+          "type": "address"
         }
       ],
-      "name": "revealAnswers",
+      "name": "resetPlayerAttempts",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -981,33 +927,19 @@
     {
       "inputs": [
         {
-          "internalType": "bytes32",
-          "name": "_answerCommitment",
-          "type": "bytes32"
+          "internalType": "uint8",
+          "name": "_score",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32[]",
+          "name": "_questionHashes",
+          "type": "bytes32[]"
         }
       ],
-      "name": "startQuiz",
+      "name": "submitQuizAndMint",
       "outputs": [],
       "stateMutability": "payable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "successfulAttempts",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
       "type": "function"
     },
     {
@@ -1062,14 +994,8 @@
       "type": "function"
     },
     {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "name": "totalAttempts",
+      "inputs": [],
+      "name": "totalMetadataCount",
       "outputs": [
         {
           "internalType": "uint256",
@@ -1082,7 +1008,7 @@
     },
     {
       "inputs": [],
-      "name": "totalMetadataCount",
+      "name": "totalNFTsMinted",
       "outputs": [
         {
           "internalType": "uint256",
