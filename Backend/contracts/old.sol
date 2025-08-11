@@ -9,59 +9,53 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 
 /**
  * @title ProofOfHeist
- * @dev NFT Quiz Game Smart Contract for crypto heist knowledge
- * @author Your Name
+ * @dev NFT Quiz Game Smart Contract 
+ * @author Yauncai
  */
 contract ProofOfHeist is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, Pausable {
     
     // ===== CONSTANTS =====
     uint256 public constant ENTRY_FEE = 0.01 ether;
-    uint256 public constant PASSING_SCORE = 14;
+    uint256 public constant PASSING_SCORE = 14;  // 14/16 = 87.5%
     uint256 public constant TOTAL_QUESTIONS = 16;
+    uint256 public constant MAX_ATTEMPTS = 3;
     uint256 public constant COOLDOWN_PERIOD = 8 minutes;
     uint256 public constant SUCCESS_REFUND_PERCENTAGE = 25;
     
     // ===== STATE VARIABLES =====
     uint256 private _tokenIdCounter;
     string public baseMetadataURI;
-    uint256 public totalMetadataCount; // Number of different NFT metadata available
+    uint256 public totalMetadataCount;
     
     // Player tracking
-    struct PlayerAttempt {
-        bytes32 answerCommitment;
-        uint256 timestamp;
-        bool hasRevealed;
-        uint8 score;
-        bool hasClaimedNFT;
-        bool isActive;
+    struct PlayerData {
+        uint256 totalAttempts;
+        uint256 successfulAttempts;
+        uint256 lastAttemptTime;
+        uint256 bestScore;
+        bool hasMintedNFT;
     }
     
-    mapping(address => PlayerAttempt) public playerAttempts;
-    mapping(address => uint256) public lastAttemptTime;
-    mapping(address => uint256) public totalAttempts;
-    mapping(address => uint256) public successfulAttempts;
+    mapping(address => PlayerData) public players;
     
     // Game statistics
     uint256 public totalPlayersParticipated;
     uint256 public totalSuccessfulCompletions;
-    uint256 public contractBalance;
+    uint256 public totalNFTsMinted;
     
     // ===== EVENTS =====
-    event QuizStarted(address indexed player, bytes32 commitment, uint256 timestamp);
-    event QuizCompleted(address indexed player, uint8 score, bool passed);
-    event NFTMinted(address indexed player, uint256 tokenId, string tokenURI);
+    event QuizAttempted(address indexed player, uint8 score, bool passed, uint256 attemptNumber);
+    event NFTMinted(address indexed player, uint256 tokenId, string tokenURI, uint8 score);
     event RefundIssued(address indexed player, uint256 amount);
     event MetadataUpdated(string newBaseURI, uint256 newCount);
     
     // ===== ERRORS =====
     error InsufficientFee();
     error CooldownNotExpired();
-    error NoActiveAttempt();
-    error AlreadyRevealed();
-    error InvalidReveal();
-    error QuizNotPassed();
-    error NFTAlreadyClaimed();
     error InvalidScore();
+    error ScoreTooLow();
+    error MaxAttemptsReached();
+    error AlreadyMintedNFT();
     error InsufficientBalance();
     error InvalidMetadataCount();
     
@@ -75,160 +69,147 @@ contract ProofOfHeist is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, Pau
         totalMetadataCount = _totalMetadataCount;
     }
     
-    // ===== MAIN GAME FUNCTIONS =====
+    // ===== MAIN FUNCTIONS =====
     
     /**
-     * @dev Start a new quiz attempt by submitting commitment hash
-     * @param _answerCommitment Hash of player's answers (keccak256(answers + nonce))
+     * @dev Submit quiz results and mint NFT if score is sufficient
+     * @param _score Player's quiz score (0-16)
      */
-    function startQuiz(bytes32 _answerCommitment) 
-        external 
-        payable 
-        whenNotPaused 
-        nonReentrant 
-    {
+    function submitQuizAndMint(
+        uint8 _score 
+    ) external payable whenNotPaused nonReentrant {
+        
+        PlayerData storage player = players[msg.sender];
+        
+        // Validate payment
         if (msg.value != ENTRY_FEE) revert InsufficientFee();
-        if (block.timestamp < lastAttemptTime[msg.sender] + COOLDOWN_PERIOD) {
+        
+        // Check cooldown
+        if (block.timestamp < player.lastAttemptTime + COOLDOWN_PERIOD) {
             revert CooldownNotExpired();
         }
         
+        // Check max attempts (reset after successful mint)
+        if (!player.hasMintedNFT && player.totalAttempts >= MAX_ATTEMPTS) {
+            revert MaxAttemptsReached();
+        }
+        
+        // Validate score
+        if (_score > TOTAL_QUESTIONS) revert InvalidScore();
+        
         // Track new player
-        if (totalAttempts[msg.sender] == 0) {
+        if (player.totalAttempts == 0) {
             totalPlayersParticipated++;
         }
         
-        // Initialize/reset player attempt
-        playerAttempts[msg.sender] = PlayerAttempt({
-            answerCommitment: _answerCommitment,
-            timestamp: block.timestamp,
-            hasRevealed: false,
-            score: 0,
-            hasClaimedNFT: false,
-            isActive: true
-        });
-        
-        lastAttemptTime[msg.sender] = block.timestamp;
-        totalAttempts[msg.sender]++;
-        contractBalance += msg.value;
-        
-        emit QuizStarted(msg.sender, _answerCommitment, block.timestamp);
-    }
-    
-    /**
-     * @dev Reveal answers and get score calculated
-     * @param _answers Array of answer indices (0-3 for multiple choice)
-     * @param _nonce Random nonce used in commitment
-     * @param _correctAnswers Array of correct answer indices for verification
-     */
-    function revealAnswers(
-        uint8[] calldata _answers,
-        uint256 _nonce,
-        uint8[] calldata _correctAnswers
-    ) external whenNotPaused nonReentrant {
-        PlayerAttempt storage attempt = playerAttempts[msg.sender];
-        
-        if (!attempt.isActive) revert NoActiveAttempt();
-        if (attempt.hasRevealed) revert AlreadyRevealed();
-        if (_answers.length != TOTAL_QUESTIONS) revert InvalidScore();
-        if (_correctAnswers.length != TOTAL_QUESTIONS) revert InvalidScore();
-        
-        // Verify commitment
-        bytes32 hash = keccak256(abi.encodePacked(_answers, _nonce));
-        if (hash != attempt.answerCommitment) revert InvalidReveal();
-        
-        // Calculate score
-        uint8 score = 0;
-        for (uint256 i = 0; i < TOTAL_QUESTIONS; i++) {
-            if (_answers[i] == _correctAnswers[i]) {
-                score++;
-            }
+        // Update player data
+        player.totalAttempts++;
+        player.lastAttemptTime = block.timestamp;
+        if (_score > player.bestScore) {
+            player.bestScore = _score;
         }
         
-        attempt.score = score;
-        attempt.hasRevealed = true;
+        bool passed = _score >= PASSING_SCORE;
         
-        bool passed = score >= PASSING_SCORE;
         if (passed) {
-            successfulAttempts[msg.sender]++;
+            if (player.hasMintedNFT) revert AlreadyMintedNFT();
+            
+            player.successfulAttempts++;
             totalSuccessfulCompletions++;
+            
+            // Mint NFT
+            _mintPlayerNFT(msg.sender, _score);
             
             // Issue refund for successful completion
             uint256 refundAmount = (ENTRY_FEE * SUCCESS_REFUND_PERCENTAGE) / 100;
             if (address(this).balance >= refundAmount) {
-                contractBalance -= refundAmount;
                 (bool success, ) = payable(msg.sender).call{value: refundAmount}("");
                 if (success) {
                     emit RefundIssued(msg.sender, refundAmount);
                 }
             }
+            
+            // Reset attempts for this player
+            player.totalAttempts = 0;
+            
+        } else {
+            // Failed attempt
+            if (_score < PASSING_SCORE) {
+                // No refund for failed attempts
+            }
         }
         
-        emit QuizCompleted(msg.sender, score, passed);
+        emit QuizAttempted(msg.sender, _score, passed, player.totalAttempts);
     }
     
     /**
-     * @dev Mint NFT for successful quiz completion
+     * @dev Internal function to mint NFT
      */
-    function mintNFT() external whenNotPaused nonReentrant {
-        PlayerAttempt storage attempt = playerAttempts[msg.sender];
+    function _mintPlayerNFT(address _player, uint8 _score) internal {
+        PlayerData storage player = players[_player];
         
-        if (!attempt.isActive) revert NoActiveAttempt();
-        if (!attempt.hasRevealed) revert InvalidReveal();
-        if (attempt.score < PASSING_SCORE) revert QuizNotPassed();
-        if (attempt.hasClaimedNFT) revert NFTAlreadyClaimed();
+        if (player.hasMintedNFT) revert AlreadyMintedNFT();
         
         // Generate random NFT metadata
-        uint256 randomIndex = _generateRandomMetadataIndex(msg.sender, attempt.timestamp);
-        string memory nftTokenURI = string(abi.encodePacked(baseMetadataURI, "/", _toString(randomIndex), ".json"));
+        uint256 randomIndex = _generateRandomMetadataIndex(_player, block.timestamp);
+        string memory nftTokenURI = string(abi.encodePacked(
+            baseMetadataURI, 
+            "/", 
+            _toString(randomIndex), 
+            ".json"
+        ));
         
         uint256 tokenId = _tokenIdCounter;
         _tokenIdCounter++;
+        totalNFTsMinted++;
         
-        attempt.hasClaimedNFT = true;
-        attempt.isActive = false;
+        player.hasMintedNFT = true;
         
-        _safeMint(msg.sender, tokenId);
+        _safeMint(_player, tokenId);
         _setTokenURI(tokenId, nftTokenURI);
         
-        emit NFTMinted(msg.sender, tokenId, nftTokenURI);
+        emit NFTMinted(_player, tokenId, nftTokenURI, _score);
     }
     
     // ===== VIEW FUNCTIONS =====
     
     /**
-     * @dev Get player's current attempt status
+     * @dev Get player's status and stats
      */
     function getPlayerStatus(address _player) external view returns (
-        bool hasActiveAttempt,
-        bool hasRevealed,
-        uint8 score,
-        bool canMintNFT,
+        uint256 totalAttempts,
+        uint256 successfulAttempts,
+        uint256 bestScore,
+        bool hasMintedNFT,
         uint256 cooldownRemaining,
-        uint256 totalAttempts_,
-        uint256 successfulAttempts_
+        uint256 attemptsRemaining,
+        bool canAttempt
     ) {
-        PlayerAttempt memory attempt = playerAttempts[_player];
+        PlayerData memory player = players[_player];
         
-        uint256 cooldown;
-        uint256 timeSinceLastAttempt = block.timestamp - lastAttemptTime[_player];
-        if (timeSinceLastAttempt >= COOLDOWN_PERIOD) {
-            cooldown = 0;
-        } else {
-            cooldown = COOLDOWN_PERIOD - timeSinceLastAttempt;
+        uint256 cooldown = 0;
+        if (player.lastAttemptTime > 0) {
+            uint256 timeSinceLastAttempt = block.timestamp - player.lastAttemptTime;
+            if (timeSinceLastAttempt < COOLDOWN_PERIOD) {
+                cooldown = COOLDOWN_PERIOD - timeSinceLastAttempt;
+            }
         }
         
-        bool canMint = attempt.hasRevealed && 
-                      attempt.score >= PASSING_SCORE && 
-                      !attempt.hasClaimedNFT;
+        uint256 remaining = 0;
+        if (!player.hasMintedNFT && player.totalAttempts < MAX_ATTEMPTS) {
+            remaining = MAX_ATTEMPTS - player.totalAttempts;
+        }
+        
+        bool canPlay = cooldown == 0 && remaining > 0;
         
         return (
-            attempt.isActive,
-            attempt.hasRevealed,
-            attempt.score,
-            canMint,
+            player.totalAttempts,
+            player.successfulAttempts,
+            player.bestScore,
+            player.hasMintedNFT,
             cooldown,
-            totalAttempts[_player],
-            successfulAttempts[_player]
+            remaining,
+            canPlay
         );
     }
     
@@ -238,22 +219,42 @@ contract ProofOfHeist is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, Pau
     function getGameStats() external view returns (
         uint256 totalPlayers,
         uint256 totalCompletions,
-        uint256 totalNFTsMinted,
-        uint256 currentBalance
+        uint256 totalNFTsMinted_,
+        uint256 currentBalance,
+        uint256 passRate // percentage of successful completions
     ) {
+        uint256 rate = totalPlayersParticipated > 0 
+            ? (totalSuccessfulCompletions * 100) / totalPlayersParticipated 
+            : 0;
+            
         return (
             totalPlayersParticipated,
             totalSuccessfulCompletions,
-            _tokenIdCounter,
-            address(this).balance
+            totalNFTsMinted,
+            address(this).balance,
+            rate
         );
     }
     
     /**
      * @dev Check if player can start a new quiz
      */
-    function canStartQuiz(address _player) external view returns (bool) {
-        return block.timestamp >= lastAttemptTime[_player] + COOLDOWN_PERIOD;
+    function canStartQuiz(address _player) external view returns (bool, string memory reason) {
+        PlayerData memory player = players[_player];
+        
+        if (player.hasMintedNFT) {
+            return (false, "Already minted NFT");
+        }
+        
+        if (player.totalAttempts >= MAX_ATTEMPTS) {
+            return (false, "Max attempts reached");
+        }
+        
+        if (block.timestamp < player.lastAttemptTime + COOLDOWN_PERIOD) {
+            return (false, "Cooldown period active");
+        }
+        
+        return (true, "Can start quiz");
     }
     
     // ===== ADMIN FUNCTIONS =====
@@ -269,6 +270,14 @@ contract ProofOfHeist is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, Pau
         baseMetadataURI = _newBaseURI;
         totalMetadataCount = _newCount;
         emit MetadataUpdated(_newBaseURI, _newCount);
+    }
+    
+    /**
+     * @dev Reset player's attempts (admin emergency function)
+     */
+    function resetPlayerAttempts(address _player) external onlyOwner {
+        players[_player].totalAttempts = 0;
+        players[_player].lastAttemptTime = 0;
     }
     
     /**
@@ -288,7 +297,6 @@ contract ProofOfHeist is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, Pau
     function withdraw(uint256 _amount) external onlyOwner nonReentrant {
         if (_amount > address(this).balance) revert InsufficientBalance();
         
-        contractBalance -= _amount;
         (bool success, ) = payable(owner()).call{value: _amount}("");
         require(success, "Withdrawal failed");
     }
@@ -298,7 +306,6 @@ contract ProofOfHeist is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, Pau
      */
     function emergencyWithdraw() external onlyOwner nonReentrant {
         uint256 balance = address(this).balance;
-        contractBalance = 0;
         (bool success, ) = payable(owner()).call{value: balance}("");
         require(success, "Emergency withdrawal failed");
     }
@@ -316,9 +323,10 @@ contract ProofOfHeist is ERC721, ERC721URIStorage, Ownable, ReentrancyGuard, Pau
         uint256 randomHash = uint256(keccak256(abi.encodePacked(
             _player,
             _timestamp,
-            block.prevrandao, // Updated from block.difficulty
+            block.prevrandao,
             block.timestamp,
-            _tokenIdCounter
+            _tokenIdCounter,
+            players[_player].bestScore
         )));
         return randomHash % totalMetadataCount;
     }
