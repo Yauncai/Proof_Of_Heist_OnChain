@@ -63,7 +63,6 @@ async function main() {
   console.log("1. Store this deployment info securely");
   console.log("2. Verify contract on Basescan");
   console.log(`   Run: npx hardhat verify --network baseSepolia ${contractAddress} "${BASE_URI}"`);
-  console.log("3. Fund contract with ETH for refunds");
 }
 
 main()
