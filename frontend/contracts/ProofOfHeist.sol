@@ -177,8 +177,8 @@ contract ProofOfHeist is ERC721Enumerable, Ownable, ReentrancyGuard, Pausable {
     }
 
     
-   function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
-        require(_ownerOf(tokenId) != address(0), "Nonexistent token");
+    function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
+        require(_exists(tokenId), "Nonexistent token");
         return string(abi.encodePacked(baseURI, "/", tokenId.toString(), ".json"));
     }
 }
