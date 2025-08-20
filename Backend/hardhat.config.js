@@ -1,6 +1,8 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
+const { PRIVATE_KEY, ETHERSCAN_API_KEY, ALCHEMY_BASE_SEPOLIA} = process.env;
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
@@ -8,21 +10,24 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200
+        runs: 200,
       },
-      viaIR: true 
-    }
-
-  },
-    networks: {
+      viaIR: true,
+    },
+  }, etherscan: {
+    apiKey: {
+      baseSepolia: process.env.ETHERSCAN_API_KEY,
+    },
+    },
+  networks: {
     localhost: {
-      url: "http://127.0.0.1:8545"
+      url: "http://127.0.0.1:8545",
     },
     baseSepolia: {
-      url: "https://sepolia.base.org",
-      accounts: [process.env.PRIVATE_KEY],
+      url: process.env.ALCHEMY_BASE_SEPOLIA, 
+      accounts: [PRIVATE_KEY],
       chainId: 84532,
-      gasPrice: 1000000000, // 1 gwei
-    }
-  }
+      gasPrice: 1000000000, 
+    },
+  },
 };
