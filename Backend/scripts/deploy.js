@@ -11,7 +11,7 @@ async function main() {
 
   // Deployment parameters
   const BASE_URI = "ipfs://bafybeiany6eepwah6ouphjp46ljpb2yrwsmaevkb3h5sjtdijf5nem5rmq/";
-  const ENTRY_FEE = ethers.parseEther("0.00001"); 
+  const ENTRY_FEE = ethers.parseEther("0.001"); 
 
   console.log("📋 Constructor params:");
   console.log("   Base URI:", BASE_URI);

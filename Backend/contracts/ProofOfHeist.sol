@@ -18,7 +18,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 contract ProofOfHeist is ERC721Enumerable, Ownable, ReentrancyGuard, Pausable {
     using Strings for uint256;
 
-    uint256 public constant ENTRY_FEE = 0.00001 ether;
+    uint256 public constant ENTRY_FEE = 0.001 ether;
     uint256 public constant PASSING_SCORE = 14; 
 
     uint256 private _tokenIdCounter = 1; 

@@ -46,7 +46,7 @@ const QuizEntry: React.FC<QuizEntryProps> = ({ onStartQuiz }) => {
                 <p className="text-sm text-gray-400">Required to participate in the quiz</p>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-neon-green">0.01 ETH</div>
+                <div className="text-2xl font-bold text-neon-green">0.001 ETH</div>
                 <div className="text-sm text-gray-400">Payable on-chain</div>
               </div>
             </div>
