@@ -1,6 +1,16 @@
 import React from 'react';
 import { Play, Zap, Trophy, Target } from 'lucide-react';
-import { getWriteContract } from '../lib/web3';
+import {
+  Transaction,
+  TransactionButton,
+  TransactionSponsor,
+  TransactionStatus,
+  TransactionStatusLabel,
+  TransactionStatusAction,
+} from '@coinbase/onchainkit/transaction';
+import { quizCalls } from '../lib/quizCalls';
+import { baseSepolia } from 'wagmi/chains';
+
 
 interface QuizEntryProps {
   onStartQuiz: () => void;
@@ -74,23 +84,24 @@ const QuizEntry: React.FC<QuizEntryProps> = ({ onStartQuiz }) => {
             </ul>
           </div>
 
-          <button
-            onClick={async () => {
-              try {
-                const contract = await getWriteContract();
-                const fee = await contract.ENTRY_FEE();
-                const tx = await contract.enterGame({ value: fee });
-                await tx.wait();
-                onStartQuiz();
-              } catch (e) {
-                // handle in real flow with toasts
+
+          <Transaction
+            chainId={baseSepolia.id}
+            calls={quizCalls}
+          onStatus={status => {
+              if (status.statusName === 'success') {
+                onStartQuiz(); 
               }
-            }}
-            className="w-full neon-button py-4 rounded-xl font-bold text-lg cyber-font flex items-center justify-center gap-3 neon-glow hover:neon-glow-intense transition-all duration-300 transform hover:scale-105"
-          >
-            <Play className="w-6 h-6" />
-            START QUIZ
-          </button>
+            }}>
+
+            <TransactionButton   className="w-full neon-button py-4 rounded-xl font-bold text-lg cyber-font neon-glow hover:neon-glow-intense transition-all duration-300 transform hover:scale-105"
+          text="START QUIZ"/>
+                <TransactionSponsor />
+                <TransactionStatus>
+                  <TransactionStatusLabel />
+                  <TransactionStatusAction />
+                </TransactionStatus>
+              </Transaction>
 
           <p className="text-center text-xs text-gray-500 mt-4">
             By starting the quiz, you agree to the entry fee and game rules
