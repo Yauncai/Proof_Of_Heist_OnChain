@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { AppProviders } from './providers';
+import '@coinbase/onchainkit/styles.css';
 import SplashScreen from './components/SplashScreen';
 import WalletHeader from './components/WalletHeader';
 import QuizEntry from './components/QuizEntry';
@@ -122,6 +124,7 @@ function App() {
   }
 
   return (
+    <AppProviders>
     <div className="min-h-screen bg-black">
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
@@ -175,6 +178,7 @@ function App() {
         />
       )}
     </div>
+    </AppProviders>
   );
 }
 
