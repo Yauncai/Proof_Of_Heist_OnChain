@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useAccount } from 'wagmi';
 import { Clock, Target, Heart, CheckCircle, XCircle } from 'lucide-react';
 import { getWriteContract } from '../lib/web3';
 
@@ -16,6 +17,15 @@ interface QuizGameProps {
 }
 
 const QuizGame: React.FC<QuizGameProps> = ({ onComplete, questions }) => {
+  const { isConnected } = useAccount();
+  const [disconnected, setDisconnected] = useState(false);
+  // Disconnect detection: if wallet disconnects during quiz, end game as failed
+  useEffect(() => {
+    if (!isConnected) {
+      setDisconnected(true);
+      setTimeout(() => onComplete(false), 2000); // Give user time to see the message
+    }
+  }, [isConnected]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [wrongAnswers, setWrongAnswers] = useState(0);
   const [timeLeft, setTimeLeft] = useState(30);
@@ -24,6 +34,16 @@ const QuizGame: React.FC<QuizGameProps> = ({ onComplete, questions }) => {
   const [isCorrect, setIsCorrect] = useState(false);
 
   
+  if (disconnected) {
+    return (
+      <div className="min-h-screen bg-black text-red-400 flex items-center justify-center p-6">
+        <div className="text-center">
+          <div className="text-3xl font-bold mb-2">Wallet Disconnected</div>
+          <div className="text-lg text-gray-300">You have been disconnected from the game.<br/>Please reconnect your wallet to try again.</div>
+        </div>
+      </div>
+    );
+  }
   if (!questions || questions.length === 0) {
     return (
       <div className="min-h-screen bg-black text-gray-300 p-6 flex items-center justify-center">
