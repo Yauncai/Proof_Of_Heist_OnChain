@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { baseSepolia } from 'wagmi/chains';
 import { coinbaseWallet, metaMask } from 'wagmi/connectors';
-import { AppProviders, MiniKitContextProvider } from './providers';
-import { useMiniKit } from '@coinbase/onchainkit/minikit';
+import { AppProviders } from './providers';
+import useMiniKit from '@farcaster/miniapp-sdk';
 import '@coinbase/onchainkit/styles.css';
 import SplashScreen from './components/SplashScreen';
 import WalletHeader from './components/WalletHeader';
@@ -32,18 +32,19 @@ const wagmiConfig = createConfig({
 });
 
 function App() {
-  const { setFrameReady, isFrameReady } = useMiniKit?.() || {};
+  const miniKit = useMiniKit;
   React.useEffect(() => {
-    if (setFrameReady && !isFrameReady) setFrameReady();
-  }, [isFrameReady, setFrameReady]);
+    // Set frame ready on mount
+    miniKit.actions.ready && miniKit.actions.ready();
+  }, []);
   const [gameState, setGameState] = useState<GameState>('splash');
   const [quizSuccess, setQuizSuccess] = useState(false);
   const [ownedNFTs, setOwnedNFTs] = useState<any[]>([]);
-  const { toasts, removeToast, showSuccess, showError, showPending, updateToast } = useToast();
-  const { questions, loading, error } = useQuestions();
+  const { toasts, removeToast, showSuccess, showPending, updateToast } = useToast();
+  const { questions, loading } = useQuestions();
   const [revealedNFT, setRevealedNFT] = useState<any | null>(null);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
-  const { nfts: chainNFTs, loading: galleryLoading } = useOwnedNFTs(connectedAddress ?? undefined);
+  const { nfts: chainNFTs } = useOwnedNFTs(connectedAddress ?? undefined);
 
   React.useEffect(() => {
     getConnectedAddress().then(setConnectedAddress).catch(() => setConnectedAddress(null));
@@ -125,13 +126,13 @@ function App() {
     }
   };
 
-  const handleRevealComplete = (nft: any) => {
+  const handleRevealComplete = () => {
     showSuccess('NFT Added to Gallery', 'Your new NFT is now available in your gallery!');
     setGameState('entry');
   };
 
   const handleViewGallery = () => {
-    setGameState('gallery');
+  setGameState('gallery');
   };
 
   const handleBackFromGallery = () => {
@@ -145,65 +146,63 @@ function App() {
 
   return (
     <WagmiProvider config={wagmiConfig}>
-      <MiniKitContextProvider>
-        <AppProviders>
-          <div className="min-h-screen bg-black">
-            <ToastContainer toasts={toasts} onRemove={removeToast} />
+      <AppProviders>
+        <div className="min-h-screen bg-black">
+          <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-            {gameState !== 'reveal' && (
-              <header className="relative z-10 p-6 border-b border-neon-green/20">
-                <div className="max-w-6xl mx-auto flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <h1 className="cyber-font text-2xl font-bold text-white neon-text">
-                      PROOF OF HEIST
-                    </h1>
-                    {ownedNFTs.length > 0 && gameState === 'entry' && (
-                      <button
-                        onClick={handleViewGallery}
-                        className="ml-4 px-4 py-2 border border-neon-green/50 rounded-lg text-neon-green hover:bg-neon-green/10 transition-all duration-300 text-sm"
-                      >
-                        Gallery ({ownedNFTs.length})
-                      </button>
-                    )}
-                  </div>
-                  <WalletHeader />
+          {gameState !== 'reveal' && (
+            <header className="relative z-10 p-6 border-b border-neon-green/20">
+              <div className="max-w-6xl mx-auto flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <h1 className="cyber-font text-2xl font-bold text-white neon-text">
+                    PROOF OF HEIST
+                  </h1>
+                  {ownedNFTs.length > 0 && gameState === 'entry' && (
+                    <button
+                      onClick={handleViewGallery}
+                      className="ml-4 px-4 py-2 border border-neon-green/50 rounded-lg text-neon-green hover:bg-neon-green/10 transition-all duration-300 text-sm"
+                    >
+                      Gallery ({ownedNFTs.length})
+                    </button>
+                  )}
                 </div>
-              </header>
-            )}
+                <WalletHeader />
+              </div>
+            </header>
+          )}
 
-            {gameState === 'entry' && <QuizEntry onStartQuiz={handleStartQuiz} />}
-            {gameState === 'quiz' && (
-              loading ? (
-                <div className="min-h-[60vh] flex items-center justify-center text-white">Loading questions...</div>
-              ) : (
-                <QuizGame onComplete={handleQuizComplete} questions={questions} />
-              )
-            )}
-            {gameState === 'result' && (
-              <ResultScreen 
-                success={quizSuccess} 
-                onRestart={handleRestart}
-                onMintNFT={handleMintNFT}
-              />
-            )}
-            {gameState === 'reveal' && revealedNFT && (
-              <NFTReveal 
-                onComplete={handleRevealComplete}
-                onViewGallery={handleViewGallery}
-                nft={revealedNFT}
-              />
-            )}
-            {gameState === 'gallery' && (
-              <NFTGallery 
-                ownedNFTs={(connectedAddress ? chainNFTs : ownedNFTs) as any[]}
-                onBack={handleBackFromGallery}
-              />
-            )}
-          </div>
-        </AppProviders>
-      </MiniKitContextProvider>
+          {gameState === 'entry' && <QuizEntry onStartQuiz={handleStartQuiz} />}
+          {gameState === 'quiz' && (
+            loading ? (
+              <div className="min-h-[60vh] flex items-center justify-center text-white">Loading questions...</div>
+            ) : (
+              <QuizGame onComplete={handleQuizComplete} questions={questions} />
+            )
+          )}
+          {gameState === 'result' && (
+            <ResultScreen 
+              success={quizSuccess} 
+              onRestart={handleRestart}
+              onMintNFT={handleMintNFT}
+            />
+          )}
+          {gameState === 'reveal' && revealedNFT && (
+            <NFTReveal 
+              onComplete={handleRevealComplete}
+              onViewGallery={handleViewGallery}
+              nft={revealedNFT}
+            />
+          )}
+          {gameState === 'gallery' && (
+            <NFTGallery 
+              ownedNFTs={(connectedAddress ? chainNFTs : ownedNFTs) as any[]}
+              onBack={handleBackFromGallery}
+            />
+          )}
+        </div>
+      </AppProviders>
     </WagmiProvider>
   );
 }
-
+  {/* MiniKitProvider is now handled in AppProviders or providers.tsx */}
 export default App;
