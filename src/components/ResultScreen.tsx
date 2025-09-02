@@ -1,13 +1,16 @@
 import React from 'react';
 import { Trophy, RotateCcw, Award, Sparkles, Zap } from 'lucide-react';
 
+import MintNFTCard from './MintNFTCard';
+
 interface ResultScreenProps {
   success: boolean;
+  score: number;
   onRestart: () => void;
-  onMintNFT: () => void;
+  onMintSuccess: (nft: any) => void;
 }
 
-const ResultScreen: React.FC<ResultScreenProps> = ({ success, onRestart, onMintNFT }) => {
+const ResultScreen: React.FC<ResultScreenProps> = ({ success, score, onRestart, onMintSuccess }) => {
   if (success) {
     return (
       <div className="min-h-screen bg-black text-gray-300 flex items-center justify-center p-6">
@@ -41,15 +44,13 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ success, onRestart, onMintN
               </div>
             </div>
 
-            <button
-              onClick={onMintNFT}
-              className="w-full bg-neon-green text-black py-4 rounded-xl font-bold text-xl cyber-font mb-4 neon-glow-intense hover:scale-105 transform transition-all duration-300 hover:bg-neon-green/80"
-            >
-              <div className="flex items-center justify-center gap-3">
-                <Zap className="w-6 h-6" />
-                MINT YOUR NFT
-              </div>
-            </button>
+
+            {/* Show MintNFTCard only if score > 14 */}
+            {score > 14 ? (
+              <MintNFTCard onMintSuccess={onMintSuccess} />
+            ) : (
+              <div className="text-center text-red-400 font-bold mb-4">You need at least 15 correct answers to mint the NFT.</div>
+            )}
 
             <p className="text-sm text-gray-500">
               Your NFT will be minted to your connected wallet

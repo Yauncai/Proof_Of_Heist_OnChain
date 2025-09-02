@@ -15,7 +15,7 @@ import NFTGallery from './components/NFTGallery';
 import { ToastContainer } from './components/ToastNotification';
 import { useToast } from './hooks/useToast';
 import { useQuestions } from './hooks/useQuestions';
-import { getWriteContract, getReadContract, ipfsToHttp, getConnectedAddress } from './lib/web3';
+import { getConnectedAddress } from './lib/web3';
 import { useOwnedNFTs } from './hooks/useOwnedNFTs';
 
 type GameState = 'splash' | 'entry' | 'quiz' | 'result' | 'reveal' | 'gallery';
@@ -39,8 +39,9 @@ function App() {
   }, []);
   const [gameState, setGameState] = useState<GameState>('splash');
   const [quizSuccess, setQuizSuccess] = useState(false);
+  const [quizScore, setQuizScore] = useState(0);
   const [ownedNFTs, setOwnedNFTs] = useState<any[]>([]);
-  const { toasts, removeToast, showSuccess, showPending, updateToast } = useToast();
+  const { toasts, removeToast, showSuccess } = useToast();
   const { questions, loading } = useQuestions();
   const [revealedNFT, setRevealedNFT] = useState<any | null>(null);
   const [connectedAddress, setConnectedAddress] = useState<string | null>(null);
@@ -58,8 +59,9 @@ function App() {
     setGameState('quiz');
   };
 
-  const handleQuizComplete = (success: boolean) => {
+  const handleQuizComplete = (success: boolean, score: number) => {
     setQuizSuccess(success);
+    setQuizScore(score);
     setGameState('result');
   };
 
@@ -67,64 +69,6 @@ function App() {
     setGameState('entry');
   };
 
-  const handleMintNFT = async () => {
-    const toastId = showPending('Minting NFT', 'Your Proof of Heist NFT is being minted on the blockchain...');
-    try {
-      const contract = await getWriteContract();
-      const tx = await contract.mintNFT();
-      const receipt = await tx.wait();
-
-      let tokenId: string | null = null;
-      for (const log of receipt.logs) {
-        try {
-          const parsed = contract.interface.parseLog({ topics: log.topics, data: log.data });
-          if (parsed?.name === 'NFTMinted') {
-            tokenId = parsed.args[1].toString();
-            break;
-          }
-          if (parsed?.name === 'Transfer' && parsed.args[0] === '0x0000000000000000000000000000000000000000') {
-            tokenId = parsed.args[2].toString();
-          }
-        } catch {}
-      }
-
-      if (!tokenId) throw new Error('Token ID not found in receipt');
-
-      const read = getReadContract();
-      const uri = await read.tokenURI(tokenId);
-      const httpUri = ipfsToHttp(uri);
-      const meta = await fetch(httpUri).then((r) => r.json()).catch(() => ({}));
-
-      const nft = {
-        id: tokenId,
-        name: meta.name ?? `POH #${tokenId}`,
-        image: ipfsToHttp(meta.image ?? ''),
-        description: meta.description ?? 'Proof of Heist NFT',
-        mintDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-        rarity: (meta.attributes?.find((a: any) => a.trait_type === 'Rarity')?.value ?? 'Rare') as any,
-        attributes: Array.isArray(meta.attributes) ? meta.attributes : []
-      };
-
-      setRevealedNFT(nft);
-      setOwnedNFTs((prev) => [...prev, nft]);
-
-      updateToast(toastId, {
-        type: 'success',
-        title: 'NFT Minted Successfully!',
-        message: `Token #${tokenId} has been added to your wallet.`,
-        duration: 5000
-      });
-
-      setGameState('reveal');
-    } catch (e: any) {
-      updateToast(toastId, {
-        type: 'error',
-        title: 'Mint Failed',
-        message: e?.message ?? 'Transaction failed',
-        duration: 6000
-      });
-    }
-  };
 
   const handleRevealComplete = () => {
     showSuccess('NFT Added to Gallery', 'Your new NFT is now available in your gallery!');
@@ -181,9 +125,35 @@ function App() {
           )}
           {gameState === 'result' && (
             <ResultScreen 
-              success={quizSuccess} 
+              success={quizSuccess}
+              score={quizScore}
               onRestart={handleRestart}
-              onMintNFT={handleMintNFT}
+              onMintSuccess={(nft) => {
+                setRevealedNFT({
+                  ...nft,
+                  id: nft.tokenId,
+                  name: nft.metadata?.name ?? `POH #${nft.tokenId}`,
+                  image: nft.metadata?.image ?? '',
+                  description: nft.metadata?.description ?? 'Proof of Heist NFT',
+                  mintDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+                  rarity: (nft.metadata?.attributes?.find((a: any) => a.trait_type === 'Rarity')?.value ?? 'Rare'),
+                  attributes: Array.isArray(nft.metadata?.attributes) ? nft.metadata.attributes : []
+                });
+                setOwnedNFTs((prev) => [
+                  ...prev,
+                  {
+                    ...nft,
+                    id: nft.tokenId,
+                    name: nft.metadata?.name ?? `POH #${nft.tokenId}`,
+                    image: nft.metadata?.image ?? '',
+                    description: nft.metadata?.description ?? 'Proof of Heist NFT',
+                    mintDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+                    rarity: (nft.metadata?.attributes?.find((a: any) => a.trait_type === 'Rarity')?.value ?? 'Rare'),
+                    attributes: Array.isArray(nft.metadata?.attributes) ? nft.metadata.attributes : []
+                  }
+                ]);
+                setGameState('reveal');
+              }}
             />
           )}
           {gameState === 'reveal' && revealedNFT && (

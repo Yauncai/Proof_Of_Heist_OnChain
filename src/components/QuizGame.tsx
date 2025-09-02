@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useConnect } from 'wagmi';
 import { Clock, Target, Heart, CheckCircle, XCircle } from 'lucide-react';
 import { getWriteContract } from '../lib/web3';
 
@@ -12,18 +12,20 @@ interface Question {
 }
 
 interface QuizGameProps {
-  onComplete: (success: boolean) => void;
+  onComplete: (success: boolean, score: number) => void;
   questions: Question[];
 }
 
 const QuizGame: React.FC<QuizGameProps> = ({ onComplete, questions }) => {
   const { isConnected } = useAccount();
+  const { connect, connectors } = useConnect();
   const [disconnected, setDisconnected] = useState(false);
   // Disconnect detection: if wallet disconnects during quiz, end game as failed
   useEffect(() => {
     if (!isConnected) {
       setDisconnected(true);
-      setTimeout(() => onComplete(false), 2000); // Give user time to see the message
+  const score = questions.length - wrongAnswers;
+  setTimeout(() => onComplete(false, score), 2000); // Give user time to see the message
     }
   }, [isConnected]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -36,10 +38,27 @@ const QuizGame: React.FC<QuizGameProps> = ({ onComplete, questions }) => {
   
   if (disconnected) {
     return (
-      <div className="min-h-screen bg-black text-red-400 flex items-center justify-center p-6">
-        <div className="text-center">
-          <div className="text-3xl font-bold mb-2">Wallet Disconnected</div>
-          <div className="text-lg text-gray-300">You have been disconnected from the game.<br/>Please reconnect your wallet to try again.</div>
+      <div className="min-h-screen bg-black/80 flex items-center justify-center p-6 z-50 fixed inset-0">
+        <div className="bg-dark-gray border border-neon-green/40 rounded-2xl p-8 max-w-md w-full shadow-2xl text-center">
+          <div className="text-3xl font-bold mb-4 text-neon-green">Wallet Disconnected</div>
+          <div className="text-lg text-gray-300 mb-6">
+            You have been disconnected from the game.<br />
+            Please reconnect your wallet to continue, or exit the game.
+          </div>
+          <div className="flex flex-col gap-4">
+            <button
+              className="px-6 py-3 bg-neon-green text-black font-bold rounded-lg hover:bg-neon-green/80 transition-all duration-300"
+              onClick={() => connect({ connector: connectors[0] })}
+            >
+              Reconnect Wallet
+            </button>
+            <button
+              className="px-6 py-3 border border-gray-600 rounded-lg text-gray-400 hover:border-red-400 hover:text-red-400 transition-all duration-300"
+              onClick={() => onComplete(false, 0)}
+            >
+              Exit Game
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -70,14 +89,15 @@ const QuizGame: React.FC<QuizGameProps> = ({ onComplete, questions }) => {
     setIsCorrect(false);
     
     setTimeout(async () => {
-      if (wrongAnswers + 1 >= 3) {
+  const score = questions.length - (wrongAnswers + 1);
+  if (wrongAnswers + 1 >= 3) {
         try {
           const contract = await getWriteContract();
           const totalWrong = wrongAnswers + 1;
           const finalScore = Math.max(0, questions.length - totalWrong);
           await (await contract.submitScore(finalScore)).wait();
         } catch {}
-        onComplete(false);
+  onComplete(false, score);
       } else {
         nextQuestion();
       }
@@ -98,22 +118,23 @@ const QuizGame: React.FC<QuizGameProps> = ({ onComplete, questions }) => {
     }
 
     setTimeout(async () => {
-      if (!correct && wrongAnswers + 1 >= 3) {
+  const score = questions.length - (wrongAnswers + (correct ? 0 : 1));
+  if (!correct && wrongAnswers + 1 >= 3) {
         try {
           const contract = await getWriteContract();
           const totalWrong = wrongAnswers + 1;
           const finalScore = Math.max(0, questions.length - totalWrong);
           await (await contract.submitScore(finalScore)).wait();
         } catch {}
-        onComplete(false);
-      } else if (currentQuestion >= questions.length - 1) {
+  onComplete(false, score);
+  } else if (currentQuestion >= questions.length - 1) {
         try {
           const contract = await getWriteContract();
           const totalWrong = wrongAnswers + (correct ? 0 : 1);
           const finalScore = Math.max(0, questions.length - totalWrong);
           await (await contract.submitScore(finalScore)).wait();
         } catch {}
-        onComplete(true);
+  onComplete(true, score);
       } else {
         nextQuestion();
       }
