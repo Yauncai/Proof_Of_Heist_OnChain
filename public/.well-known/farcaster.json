@@ -1,0 +1,14 @@
+{
+  "name": "Proof of Heist",
+  "description": "A fast-paced, cyber-themed quiz adventure where you answer questions and mint unique NFTs as rewards.",
+  "icon": "/POH.svg",
+  "url": "https://proof-of-heist.vercel.app",
+  "redirect_uris": [
+    "https://proof-of-heist.vercel.app"
+  ],
+  "farcaster": {
+    "header": "base64_header",
+    "payload": "base64_payload",
+    "signature": "hex_signature"
+  }
+}
