@@ -43,6 +43,13 @@ const WalletHeader: React.FC = () => {
           <WalletDropdownDisconnect />
         </WalletDropdown>
       </Wallet>
+
+      {/* Contract address display for user visibility */}
+      <div className="ml-4">
+        <p className="text-xs sm:text-sm font-mono text-neon-green bg-black/70 px-3 py-2 rounded-lg break-all border border-neon-green/30 shadow-lg mt-2">
+          Contract: {import.meta.env.VITE_CONTRACT_ADDRESS || '0xYourContractAddress'}
+        </p>
+      </div>
     </div>
   );
 };
