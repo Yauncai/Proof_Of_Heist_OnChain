@@ -9,7 +9,7 @@
     "name": "Proof of Heist",
     "description": "An on-chain trivia game where you can prove your knowledge and earn unique NFTs as proof of your heists.",
     "tagline": "Turn trivia into treasure!",
-    "subtitle": "You werent there... but you know what happened.",
+    "subtitle": "You know what happened?",
   "homeUrl": "https://proof-of-heist-on-chain.vercel.app/",
   "iconUrl": "https://proof-of-heist-on-chain.vercel.app/POH.svg",
   "splashImageUrl": "https://proof-of-heist-on-chain.vercel.app/POH.svg",
