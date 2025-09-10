@@ -1,14 +1,23 @@
 {
-  "name": "Proof of Heist",
-  "description": "A fast-paced, cyber-themed quiz adventure where you answer questions and mint unique NFTs as rewards.",
-  "icon": "/POH.svg",
-  "url": "https://proof-of-heist.vercel.app",
-  "redirect_uris": [
-    "https://proof-of-heist.vercel.app"
-  ],
-  "farcaster": {
-    "header": "base64_header",
-    "payload": "base64_payload",
-    "signature": "hex_signature"
+  "accountAssociation": {
+    "header": "eyJmaWQiOjEzMTg3MjYsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhiMUE0ZTMwODAzNTE1NzhBOGY0OGVlRTQyRDM4RjY4YzllODc4YTY4In0",
+    "payload": "eyJkb21haW4iOiJwcm9vZi1vZi1oZWlzdC1vbi1jaGFpbi52ZXJjZWwuYXBwIn0",
+    "signature": "MHg0YTU1Y2ZjMGZhMjJiN2Q2MGUwYWYwYmMxZTQxNzAwMjQ3YjJmYmEwZDk5M2ZhMTM3NTU3ZTdlYmYwYWY0NmRmNzk3MDhmNjIyNzhmZDg3Nzk3YTNkN2IyYTEzYWZiNWU4NmUyNTdjZTdlZTIwNDlhMjUzMjUyZDVhZjIxNDQ5ZDFi"
+  },
+  "frame": {
+    "version": "1",
+    "name": "Proof of Heist",
+    "description": "An on-chain trivia game where you can prove your knowledge and earn unique NFTs as proof of your heists.",
+    "tagline": "Turn trivia into treasure!",
+    "subtitle": "You werent there... but you know what happened.",
+  "homeUrl": "https://proof-of-heist-on-chain.vercel.app/",
+  "iconUrl": "https://proof-of-heist-on-chain.vercel.app/POH.svg",
+  "splashImageUrl": "https://proof-of-heist-on-chain.vercel.app/POH.svg",
+    "splashBackgroundColor": "#000000",
+    "primaryCategory": "games",
+    "tags": ["game", "fun"],
+    "noindex": true
   }
 }
+
+
