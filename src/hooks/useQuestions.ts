@@ -103,7 +103,6 @@ export function useQuestions() {
           .filter((q: Question) => q.question && q.options.length > 0);
 
         if (isMounted) {
-          console.log('Fetched questions:', fetched);
           if (fetched.length > 0) {
             setQuestions(sampleRandom(fetched, 16));
             setSource('firestore');
