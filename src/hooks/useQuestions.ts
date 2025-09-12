@@ -30,6 +30,7 @@ const sampleQuestions: Question[] = [
   },
   {
     id: 2,
+    
     question:
       'The Bored Ape Yacht Club Instagram hack in 2022 resulted in the theft of NFTs worth approximately how much?',
     options: ["$1 million", "$3 million", "$500,000", "$2 million"],
